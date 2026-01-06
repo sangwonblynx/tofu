@@ -11,7 +11,7 @@ batch_size: 16
 gradient_accumulation_steps: 1
 num_epochs: 5
 lr: 1e-5
-save_dir: /finetuned_model/${model_family}_${num_epochs}
+save_dir: finetuned_model/${model_family}_${num_epochs}
 
 weight_decay: 0.01
 seed: 42
