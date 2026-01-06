@@ -139,6 +139,7 @@ def main(cfg):
 
     model.save_pretrained(cfg.save_dir)
     tokenizer.save_pretrained(cfg.save_dir)
+    print(cfg.seed)
 
 if __name__ == "__main__":
     main()
