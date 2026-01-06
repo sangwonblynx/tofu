@@ -37,5 +37,5 @@ qwen:
   # Qwen2.5는 Flash Attention 2를 지원합니다. GPU가 지원한다면 true로 바꾸면 훨씬 빠릅니다.
   flash_attention2: "false"
   gradient_checkpointing: "false"
-  ft_model_path: ""
+  ft_model_path: "/workspace/tofu/finetuned_model/qwen_5/checkpoint-625"
   
