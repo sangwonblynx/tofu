@@ -29,5 +29,13 @@ pythia-1.4:
   answer_tag: "Answer: "
   flash_attention2: "false"
   gradient_checkpointing: "false"
-
+qwen:
+  hf_key: "Qwen/Qwen2.5-0.5B"
+  question_start_tag: "<|im_start|>user\n"
+  question_end_tag: "<|im_end|>\n<|im_start|>assistant\n"
+  answer_tag: ""
+  # Qwen2.5는 Flash Attention 2를 지원합니다. GPU가 지원한다면 true로 바꾸면 훨씬 빠릅니다.
+  flash_attention2: "false"
+  gradient_checkpointing: "false"
+  ft_model_path: ""
   

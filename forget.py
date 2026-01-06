@@ -1,6 +1,8 @@
 from data_module import TextForgetDatasetQA, TextForgetDatasetDPOQA
 from dataloader import CustomTrainerForgetting, custom_data_collator_forget
 import torch
+from torch.utils.data import DataLoader
+
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, set_seed
 
 import hydra 
@@ -181,13 +183,14 @@ def main(cfg):
         model = get_peft_model(model, config)
         print_trainable_parameters(model)
 
+    #torch_format_dataset은 망각데이터라서 전체데이터로 바꿔줘야 한다.
     retain_loader = DataLoader(
         torch_format_dataset,
         batch_size=1,
         shuffle=False
     )
 
-    device = 'cuda'
+    device = torch.device(f"cuda:{local_rank}") if torch.distributed.is_initialized() else torch.device("cuda")
     center, inv_cov = compute_retain_statistics(model, retain_loader, device)
     
     trainer = CustomTrainerForgetting(

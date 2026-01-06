@@ -1,4 +1,4 @@
-model_family: llama2-7b
+model_family: qwen
 model_path: null
 LoRA:
   r: 0
@@ -6,14 +6,14 @@ LoRA:
   dropout: 0.05
 
 lr: 1e-5
-split: forget01
+split: forget05
 data_path: locuslab/TOFU
 batch_size: 16
 gradient_accumulation_steps: 4
 num_epochs: 5
 forget_loss: grad_ascent
 
-save_dir: ${model_path}/${forget_loss}_${lr}_${split}_${num_epochs}
+save_dir: ./outputs/${model_family}/${forget_loss}_${lr}_${split}
 overwrite_dir: false
 weight_decay: 0.01
 save_model: true
