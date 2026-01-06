@@ -1,5 +1,5 @@
-model_id: NousResearch/Llama-2-7b-chat-hf
-model_family: llama2-7b
+model_id: Qwen/Qwen2.5-0.5B
+model_family: qwen
 
 LoRA:
   r: 8
