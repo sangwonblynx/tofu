@@ -93,7 +93,15 @@ def main(cfg):
             seed = cfg.seed,
         )
 
-    model = AutoModelForCausalLM.from_pretrained(model_id, use_flash_attention_2=model_cfg["flash_attention2"]=="true", torch_dtype=torch.bfloat16, trust_remote_code = True)
+    # Flash Attention 사용 여부를 결정하는 로직
+    attn_impl = "flash_attention_2" if model_cfg["flash_attention2"] == "true" else "eager"
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        attn_implementation=attn_impl,  # 이 부분이 핵심입니다.
+        torch_dtype=torch.bfloat16,
+        trust_remote_code=True
+    )
     
     # Hot fix for https://discuss.huggingface.co/t/help-with-llama-2-finetuning-setup/50035
     model.generation_config.do_sample = True
