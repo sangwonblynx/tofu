@@ -11,6 +11,25 @@ from pathlib import Path
 from utils import get_model_identifiers_from_yaml
 from omegaconf import OmegaConf
 
+def compute_retain_statistics(model, retain_loader, device):
+    model.eval()
+    all_embs = []
+
+    with torch.no_grad():
+        for x, _ in retain_loader:
+            x = x.to(device)
+            emb = model.get_embedding(x)
+            all_embs.append(emb.cpu())
+
+    all_embs = torch.cat(all_embs, dim=0)
+    center = all_embs.mean(dim=0).to(device)
+    cov = torch.cov(all_embs.T)
+
+    # 수치적 안정을 위해 ridge term 추가 후 역행렬 계산
+    inv_cov = torch.inverse(cov + torch.eye(cov.size(0)) * 1e-5).to(device)
+
+    return center, inv_cov
+
 def find_all_linear_names(model):
     cls = torch.nn.Linear
     lora_module_names = set()
@@ -162,6 +181,14 @@ def main(cfg):
         model = get_peft_model(model, config)
         print_trainable_parameters(model)
 
+    retain_loader = DataLoader(
+        torch_format_dataset,
+        batch_size=1,
+        shuffle=False
+    )
+
+    device = 'cuda'
+    center, inv_cov = compute_retain_statistics(model, retain_loader, device)
     
     trainer = CustomTrainerForgetting(
         model=model,
@@ -175,6 +202,8 @@ def main(cfg):
         oracle_model = oracle_model,
         forget_loss = cfg.forget_loss,
         eval_cfg = cfg.eval,
+        center=center,
+        inv_cov=inv_cov
     )
     model.config.use_cache = False  # silence the warnings. Please re-enable for inference!
     # trainer.train()
@@ -195,7 +224,6 @@ def main(cfg):
                 #delete the directory
                 import shutil
                 shutil.rmtree(global_step_dir)
-
 
 
 if __name__ == "__main__":

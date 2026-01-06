@@ -52,6 +52,9 @@ class CustomTrainerForgetting(Trainer):
         if self.loss_type == "KL":
             self.oracle_model = self.e_prepare_deepspeed(self.oracle_model)
 
+        self.center = kwargs.pop('center')
+        self.inv_cov = kwargs.pop('inv_cov')
+
     def e_prepare_deepspeed(self, model):
         # Adapted from accelerate: https://github.com/huggingface/accelerate/blob/739b135f8367becb67ffaada12fe76e3aa60fefd/src/accelerate/accelerator.py#L1473
         deepspeed_plugin = self.accelerator.state.deepspeed_plugin
@@ -89,7 +92,7 @@ class CustomTrainerForgetting(Trainer):
         return model
     
 
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, center=None, inv_cov=None):
         if self.loss_type == "grad_ascent":
             forget_inputs, retain_inputs = inputs
             input_ids, labels, attention_mask = forget_inputs
@@ -97,6 +100,27 @@ class CustomTrainerForgetting(Trainer):
             forget_loss = outputs.loss
             forget_loss = forget_loss * -1
             loss = forget_loss
+
+        elif self.loss_type == "boundary_grad_ascent":
+            forget_inputs, retain_inputs = inputs
+            input_ids, labels, attention_mask = forget_inputs
+
+            outputs = model(input_ids, labels=labels, attention_mask=attention_mask, output_hidden_states=True)
+
+            last_hidden_state = outputs.hidded_states[-1]
+            forget_embeddings = last_hidden_state[:, -1, :]
+
+            #ascent 말고 idk로 대체?
+            #다 통일해도 되는지 vs 좀 다양성을 둬야하는지
+            #GA랑 각각 비교해 보자
+            loss_ascent = -outputs.loss
+            loss_penalty = mahalanobis_penalty(forget_embeddings, self.center, self.inv_cov)
+
+            alpha = 1.0
+            beta = 0.1
+            #하드코딩
+
+            loss = (alpha * loss_ascent) + (beta * loss_penalty)
 
         elif self.loss_type == "grad_diff":
             forget_inputs, retain_inputs = inputs
@@ -333,4 +357,9 @@ def get_loss(output, labels):
 
     return loss
 
-
+def mahalanobis_penalty(z, center, inv_cov):
+    delta = z - center
+    m_dist_sq = torch.diag(delta @ inv_cov, delta.T)
+    #특정 거리(예: 카이제곱 분포 임계치)를 넘으면 패널티
+    #여기서는 단순 평균거리 최소화 유도
+    return torch.mean(m_dist_sq)
