@@ -13,14 +13,26 @@ from pathlib import Path
 from utils import get_model_identifiers_from_yaml
 from omegaconf import OmegaConf
 
+
 def compute_retain_statistics(model, retain_loader, device):
     model.eval()
     all_embs = []
 
     with torch.no_grad():
-        for x, _ in retain_loader:
-            x = x.to(device)
-            emb = model.get_embedding(x)
+        for batch in retain_loader:
+            # 1. 만약 batch가 딕셔너리라면 (TOFU의 일반적인 케이스)
+            if isinstance(batch, dict):
+                # 모델 입력에 필요한 값을 device로 옮깁니다.
+                inputs = {k: v.to(device) for k, v in batch.items()}
+                # 모델마다 임베딩을 뽑는 메서드가 다를 수 있습니다.
+                # 만약 get_embedding이 없다면 model.model.embed_tokens 등을 사용해야 할 수도 있습니다.
+                emb = model.get_embedding(inputs['input_ids'])
+
+                # 2. 만약 batch가 [input_ids, labels] 같은 리스트라면
+            elif isinstance(batch, list):
+                x = batch[0].to(device)  # 첫 번째 요소가 보통 input_ids입니다.
+                emb = model.get_embedding(x)
+
             all_embs.append(emb.cpu())
 
     all_embs = torch.cat(all_embs, dim=0)
@@ -187,6 +199,7 @@ def main(cfg):
     #now we have a HuggingFace model 
     if model_cfg["gradient_checkpointing"] == "true":
         model.gradient_checkpointing_enable()
+
     config = LoraConfig(
         r=cfg.LoRA.r, 
         lora_alpha=cfg.LoRA.alpha, 
